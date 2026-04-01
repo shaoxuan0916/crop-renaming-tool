@@ -9,6 +9,9 @@
     "dev:windows:web": "pnpm --dir apps/windows dev",
     "build:windows:web": "pnpm --dir apps/windows build",
     "dev:windows": "pnpm --dir apps/windows tauri:dev",
-    "build:windows": "pnpm --dir apps/windows tauri:build"
+    "build:windows": "pnpm --dir apps/windows tauri:build",
+    "install:web": "pnpm --dir apps/web install",
+    "dev:web": "pnpm --dir apps/web dev",
+    "build:web": "pnpm --dir apps/web build"
   }
 }

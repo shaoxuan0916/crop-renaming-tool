@@ -2,19 +2,21 @@
 
 ## Shared product behavior
 
-The application is a local desktop workflow for processing cropped images into final `.webp` assets with a controlled naming scheme.
+The application family is a local workflow for processing cropped images into final `.webp` assets with a controlled naming scheme.
 
 Core behaviors:
 
-- destination folder is chosen once per batch
 - first token is fixed for the batch
 - suffix is freeform per item
 - final filename is `firstToken.webp` or `firstToken_suffix.webp`
 - invalid filename characters are sanitized
 - filename collisions are blocked
-- original file is only replaced after a successful `.webp` conversion
-- undo restores the original file when possible
-- session log is written to `crop-session-log.json` inside the destination folder
+- each platform keeps assets local and only finalizes after a successful `.webp` conversion
+
+Platform output differences:
+
+- desktop variants write finalized assets into a chosen destination folder
+- the browser variant stores queue data locally in the browser and exports finalized files as ZIP downloads
 
 ## mac app
 
@@ -47,6 +49,18 @@ Rust responsibilities:
 - rename ready items
 - undo finalized items
 - export the session log
+
+## web app
+
+The web app is implemented as a browser-only React app under `apps/web`.
+
+Frontend responsibilities:
+
+- render the batch/session UI
+- accept drag-drop and file picker image imports
+- convert source images to `.webp` in-browser
+- persist presets, queue metadata, and image blobs locally in the browser
+- export finalized assets as a ZIP download
 
 ## Shared data model
 
