@@ -10,7 +10,7 @@ A local macOS SwiftUI app for:
 ## Run
 
 ```bash
-cd /Users/shaoxuan/Documents/Playground/apps/mac
+cd /Users/your-username/Documents/crop-renaming-tool/apps/mac
 swift run
 ```
 

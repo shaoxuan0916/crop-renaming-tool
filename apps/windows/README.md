@@ -13,7 +13,7 @@ Windows-focused desktop scaffold for the crop renaming workflow.
 ## Install
 
 ```bash
-cd /Users/shaoxuan/Documents/Playground/apps/windows
+cd /Users/your-username/Documents/crop-renaming-tool/apps/windows
 pnpm install
 ```
 

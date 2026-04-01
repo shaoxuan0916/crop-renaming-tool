@@ -2,7 +2,7 @@
 name = "crop-renamer-windows"
 version = "0.1.0"
 description = "Windows desktop app for crop renaming workflows"
-authors = ["shaoxuan"]
+authors = ["your-username"]
 edition = "2021"
 
 [lib]
