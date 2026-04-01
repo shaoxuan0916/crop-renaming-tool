@@ -34,7 +34,10 @@ export function loadPresets(): string[] {
   }
 
   try {
-    return JSON.parse(raw) as string[];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === "string")
+      : [];
   } catch {
     return [];
   }
@@ -51,7 +54,15 @@ export function loadQueue(): QueueItem[] {
   }
 
   try {
-    return JSON.parse(raw) as QueueItem[];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.flatMap((item) => {
+      const normalized = normalizeQueueItem(item);
+      return normalized ? [normalized] : [];
+    });
   } catch {
     return [];
   }
@@ -63,4 +74,40 @@ export function saveQueue(queue: QueueItem[]) {
 
 export function clearQueueStorage() {
   window.localStorage.removeItem(QUEUE_KEY);
+}
+
+function normalizeQueueItem(value: unknown): QueueItem | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const item = value as Record<string, unknown>;
+  if (
+    typeof item.id !== "string" ||
+    typeof item.originalName !== "string" ||
+    typeof item.originalType !== "string" ||
+    typeof item.originalBlobKey !== "string" ||
+    typeof item.webpBlobKey !== "string" ||
+    typeof item.createdAt !== "string"
+  ) {
+    return null;
+  }
+
+  const status =
+    item.status === "pending" || item.status === "ready" || item.status === "error"
+      ? item.status
+      : "pending";
+
+  return {
+    id: item.id,
+    originalName: item.originalName,
+    originalType: item.originalType,
+    suffix: typeof item.suffix === "string" ? item.suffix : "",
+    finalName: typeof item.finalName === "string" ? item.finalName : "",
+    status,
+    errorMessage: typeof item.errorMessage === "string" ? item.errorMessage : null,
+    originalBlobKey: item.originalBlobKey,
+    webpBlobKey: item.webpBlobKey,
+    createdAt: item.createdAt
+  };
 }

@@ -12,8 +12,17 @@ export async function fileToQueueItem(file: File, quality: number): Promise<Queu
   const webpBlobKey = `webp:${id}`;
 
   await putBlob(originalBlobKey, file);
-  const webpBlob = await convertBlobToWebp(file, quality);
-  await putBlob(webpBlobKey, webpBlob);
+
+  try {
+    const webpBlob = await convertBlobToWebp(file, quality);
+    await putBlob(webpBlobKey, webpBlob);
+  } catch (error) {
+    await Promise.allSettled([
+      deleteBlob(originalBlobKey),
+      deleteBlob(webpBlobKey)
+    ]);
+    throw error;
+  }
 
   return {
     id,

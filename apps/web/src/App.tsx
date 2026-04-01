@@ -29,8 +29,12 @@ import {
 } from "./lib/storage";
 import type { BatchSession, QueueItem } from "./lib/types";
 
-const EMPTY_HINT =
-  "No items yet. Drop cropped images here or use the file picker to build your browser-local queue.";
+const EMPTY_HINT = "No files yet. Drop images here or use Pick Files.";
+const THEME_STORAGE_KEY = "crop-renamer-web:theme";
+const MISSING_ASSET_MESSAGE =
+  "Stored image data is missing from browser storage. Re-import this file to continue.";
+
+type ThemeMode = "light" | "dark";
 
 export function App() {
   const [session, setSession] = useState<BatchSession>(() => loadSession());
@@ -43,8 +47,10 @@ export function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [theme, setTheme] = useState<ThemeMode>(() => loadTheme());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previousPreviewUrls = useRef<Record<string, string>>({});
+  const dragDepthRef = useRef(0);
 
   const deferredQueue = useDeferredValue(queue);
   const selectedItem = useMemo(
@@ -65,23 +71,32 @@ export function App() {
   }, [queue]);
 
   useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  }, [theme]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function hydratePreviews() {
+      const missingPreviewIds = new Set<string>();
       const nextEntries = await Promise.all(
         queue.map(async (item) => {
           const existing = previousPreviewUrls.current[item.id];
           if (existing) {
-            return [item.id, existing] as const;
+            return { id: item.id, url: existing, reused: true } as const;
           }
           const previewUrl = await buildPreviewUrl(item);
-          return [item.id, previewUrl] as const;
+          if (!previewUrl) {
+            missingPreviewIds.add(item.id);
+          }
+          return { id: item.id, url: previewUrl, reused: false } as const;
         })
       );
 
       if (cancelled) {
-        nextEntries.forEach(([, url]) => {
-          if (url) {
+        nextEntries.forEach(({ url, reused }) => {
+          if (url && !reused) {
             URL.revokeObjectURL(url);
           }
         });
@@ -89,7 +104,7 @@ export function App() {
       }
 
       const nextMap = Object.fromEntries(
-        nextEntries.filter((entry): entry is readonly [string, string] => Boolean(entry[1]))
+        nextEntries.flatMap((entry) => (entry.url ? [[entry.id, entry.url] as const] : []))
       );
 
       for (const [id, url] of Object.entries(previousPreviewUrls.current)) {
@@ -100,6 +115,22 @@ export function App() {
 
       previousPreviewUrls.current = nextMap;
       setPreviewUrls(nextMap);
+
+      if (missingPreviewIds.size > 0) {
+        startTransition(() => {
+          setQueue((current) =>
+            current.map((item) =>
+              missingPreviewIds.has(item.id) && item.errorMessage !== MISSING_ASSET_MESSAGE
+                ? {
+                    ...item,
+                    status: "error",
+                    errorMessage: MISSING_ASSET_MESSAGE
+                  }
+                : item
+            )
+          );
+        });
+      }
     }
 
     void hydratePreviews();
@@ -236,11 +267,12 @@ export function App() {
     });
   }
 
-  async function handleClearAll() {
+  async function handleResetSession() {
     await Promise.all(queue.map((item) => removeItemAssets(item)));
     await clearBlobStore();
     clearQueueStorage();
     startTransition(() => {
+      setSession(EMPTY_SESSION);
       setQueue([]);
       setSelectedItemId(null);
     });
@@ -292,35 +324,108 @@ export function App() {
     }
   }
 
+  function hasFilePayload(event: React.DragEvent<HTMLElement>) {
+    return Array.from(event.dataTransfer.types).includes("Files");
+  }
+
+  function handleGlobalDragEnter(event: React.DragEvent<HTMLElement>) {
+    if (!hasFilePayload(event)) {
+      return;
+    }
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    setIsDropActive(true);
+  }
+
+  function handleGlobalDragOver(event: React.DragEvent<HTMLElement>) {
+    if (!hasFilePayload(event)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    if (!isDropActive) {
+      setIsDropActive(true);
+    }
+  }
+
+  function handleGlobalDragLeave(event: React.DragEvent<HTMLElement>) {
+    if (!hasFilePayload(event)) {
+      return;
+    }
+    event.preventDefault();
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setIsDropActive(false);
+    }
+  }
+
+  function handleGlobalDrop(event: React.DragEvent<HTMLElement>) {
+    if (!hasFilePayload(event)) {
+      return;
+    }
+    event.preventDefault();
+    dragDepthRef.current = 0;
+    setIsDropActive(false);
+    void importFiles(event.dataTransfer.files);
+  }
+
   const readyCount = queue.filter((item) => item.status === "ready").length;
 
   return (
-    <div className="shell">
+    <div
+      className="app-shell"
+      onDragEnter={handleGlobalDragEnter}
+      onDragOver={handleGlobalDragOver}
+      onDragLeave={handleGlobalDragLeave}
+      onDrop={handleGlobalDrop}
+    >
+      {isDropActive ? (
+        <div className="drop-overlay" aria-hidden="true">
+          <div className="drop-overlay-card">
+            <div className="drop-badge">+</div>
+            <strong>Drop images anywhere</strong>
+            <p>Files will be imported into the queue locally.</p>
+          </div>
+        </div>
+      ) : null}
+      <div className="shell">
       <aside className="sidebar">
-        <section className="panel poster">
-          <div className="panel-header">
+        <section className="hero">
+          <div className="hero-header">
             <div>
-              <p className="eyebrow">Browser Local</p>
-              <h1>Crop Renamer Web</h1>
+              <p className="eyebrow">Web</p>
+              <h1>Crop Renamer</h1>
             </div>
+            <div className="theme-switch" aria-label="Theme">
+              <button
+                type="button"
+                className={theme === "light" ? "theme-option is-active" : "theme-option"}
+                onClick={() => setTheme("light")}
+              >
+                Light
+              </button>
+              <button
+                type="button"
+                className={theme === "dark" ? "theme-option is-active" : "theme-option"}
+                onClick={() => setTheme("dark")}
+              >
+                Dark
+              </button>
+            </div>
+          </div>
+
+          <p className="lede">Rename, convert, and export image crops locally.</p>
+        </section>
+
+        <section className="panel control-panel">
+          <div className="section-title-row tight">
+            <h2>Batch</h2>
             <button
-              className="secondary-button"
-              onClick={() => setSession(EMPTY_SESSION)}
+              className="ghost-button"
+              onClick={() => void handleResetSession()}
             >
               Reset Session
             </button>
-          </div>
-
-          <p className="lede">
-            Drop cropped images, convert them to WebP in-browser, finalize names,
-            and download everything as a ZIP to your browser downloads.
-          </p>
-        </section>
-
-        <section className="panel">
-          <div className="section-title-row">
-            <h2>Batch Setup</h2>
-            <span>{readyCount} ready</span>
           </div>
 
           <label className="field">
@@ -330,12 +435,12 @@ export function App() {
               onChange={(event) =>
                 setSession((current) => ({ ...current, firstToken: event.target.value }))
               }
-              placeholder="e.g. 2025_math_p1"
+              placeholder="2025_math_p1"
             />
           </label>
 
           <label className="field">
-            <span>Download bundle name</span>
+            <span>Zip name</span>
             <input
               value={session.downloadBundleName}
               onChange={(event) =>
@@ -344,21 +449,21 @@ export function App() {
                   downloadBundleName: event.target.value
                 }))
               }
-              placeholder="e.g. trial-paper-export"
+              placeholder="trial-paper-export"
             />
           </label>
 
-          <div className="button-row">
+          <div className="button-row compact-grid">
             <button onClick={handleSavePreset}>Save Preset</button>
             <button
-              className="secondary-button"
+              className="ghost-button"
               onClick={() => setIsPresetModalOpen(true)}
               disabled={presets.length === 0}
             >
-              Manage Presets
+              Presets
             </button>
             <button
-              className="secondary-button"
+              className="ghost-button"
               onClick={() => fileInputRef.current?.click()}
             >
               Pick Files
@@ -381,66 +486,175 @@ export function App() {
 
           <div
             className={`dropzone ${isDropActive ? "is-active" : ""}`}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setIsDropActive(true);
-            }}
-            onDragLeave={(event) => {
-              event.preventDefault();
-              setIsDropActive(false);
-            }}
-            onDrop={(event) => {
-              event.preventDefault();
-              setIsDropActive(false);
-              void importFiles(event.dataTransfer.files);
-            }}
           >
-            <div className="drop-badge">{isImporting ? "..." : "WEBP"}</div>
-            <strong>Drop cropped images here</strong>
-            <p>
-              Files are stored locally in your browser. No external storage is used.
-            </p>
+            <div className="drop-badge">{isImporting ? "..." : "+"}</div>
+            <strong>{isImporting ? "Importing..." : "Drop images here"}</strong>
+            <p>Everything stays in this browser.</p>
           </div>
 
           <div className="button-row compact">
             <button
-              className="secondary-button"
               onClick={() => void handleDownloadAll()}
               disabled={isDownloading || readyCount === 0}
             >
-              {isDownloading ? "Preparing ZIP..." : "Download All (.zip)"}
-            </button>
-            <button
-              className="secondary-button"
-              onClick={() => void handleClearAll()}
-              disabled={queue.length === 0}
-            >
-              Clear Queue
+              {isDownloading ? "Preparing Zip..." : "Download Zip"}
             </button>
           </div>
         </section>
+      </aside>
 
+      <main className="detail-column">
+        {selectedItem ? (
+          <>
+            <div className="preview-surface">
+              {previewUrls[selectedItem.id] ? (
+                <div className="preview-frame">
+                  <img
+                    src={previewUrls[selectedItem.id]}
+                    alt={selectedItem.finalName || selectedItem.originalName}
+                  />
+                </div>
+              ) : (
+                <div className="empty-preview">Preview loading...</div>
+              )}
+            </div>
+
+            <section className="detail-surface">
+              <div className="detail-panel">
+                <div className="section-title-row">
+                  <div>
+                    <p className="eyebrow">Selected</p>
+                    <h2>{selectedItem.originalName}</h2>
+                  </div>
+                  <button
+                    className="ghost-button"
+                    onClick={() => void handleDeleteItem(selectedItem)}
+                  >
+                    Delete
+                  </button>
+                </div>
+
+                <label className="field">
+                  <span>Suffix</span>
+                  <input
+                    value={selectedItem.suffix}
+                    onChange={(event) => {
+                      const nextValue = event.target.value;
+                      startTransition(() => {
+                        setQueue((current) =>
+                          current.map((item) =>
+                            item.id === selectedItem.id
+                              ? { ...item, suffix: nextValue }
+                              : item
+                          )
+                        );
+                      });
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") {
+                        return;
+                      }
+                      if (selectedItem.status === "pending" || selectedItem.status === "error") {
+                        void handleFinalizeSelected();
+                      } else {
+                        void handleRenameReadyItem();
+                      }
+                    }}
+                    placeholder="q1_a"
+                  />
+                </label>
+
+                <div className="meta-grid">
+                  <div className="meta-card">
+                    <span>Export name</span>
+                    <strong>{selectedItem.finalName || "Not finalized yet"}</strong>
+                  </div>
+                  <div className="meta-card">
+                    <span>Status</span>
+                    <strong>{formatStatusLabel(selectedItem.status)}</strong>
+                  </div>
+                </div>
+
+                {selectedItem.errorMessage ? (
+                  <div className="error-banner">{selectedItem.errorMessage}</div>
+                ) : null}
+
+                <div className="button-row">
+                  <button
+                    onClick={() => void handleFinalizeSelected()}
+                    disabled={!session.firstToken.trim()}
+                  >
+                    Finalize
+                  </button>
+                  <button
+                    className="ghost-button"
+                    onClick={() => void handleRenameReadyItem()}
+                    disabled={selectedItem.status !== "ready"}
+                  >
+                    Rename
+                  </button>
+                  <button
+                    className="ghost-button"
+                    onClick={() => void handleRetryItem(selectedItem)}
+                  >
+                    Retry
+                  </button>
+                  <button
+                    className="ghost-button"
+                    onClick={() => void handleDownloadSelected()}
+                    disabled={selectedItem.status !== "ready"}
+                  >
+                    Download
+                  </button>
+                </div>
+              </div>
+            </section>
+          </>
+        ) : (
+          <>
+            <section className="preview-surface preview-empty">
+              <div className="empty-preview">Select a file to preview it here.</div>
+            </section>
+            <section className="detail-empty">
+              <div className="section-title-row">
+                <p className="eyebrow">Settings</p>
+              </div>
+              <h2>Select a file</h2>
+              <p>Choose an item from the queue or import new images.</p>
+            </section>
+          </>
+        )}
+      </main>
+
+      <aside className="queue-column">
         <section className="panel queue-panel">
-          <div className="section-title-row">
+          <div className="section-title-row tight">
             <h2>Queue</h2>
-            <span>{queue.length} items</span>
+            <span className="section-caption">{queue.length} items</span>
           </div>
 
           <div className="queue-list">
             {deferredQueue.length === 0 ? (
               <div className="empty-state">{EMPTY_HINT}</div>
             ) : (
-              deferredQueue.map((item) => (
+              deferredQueue.map((item, index) => (
                 <button
                   key={item.id}
                   className={`queue-item ${item.id === selectedItemId ? "is-selected" : ""}`}
                   onClick={() => setSelectedItemId(item.id)}
                 >
+                  <div className="queue-index">{index + 1}</div>
                   <div className="queue-copy">
-                    <strong>{item.finalName || item.originalName}</strong>
-                    <span>{item.status}</span>
+                    <div className="queue-row">
+                      <strong>{item.finalName || item.originalName}</strong>
+                      <span className={`status-pill status-pill-${item.status}`}>
+                        {formatStatusLabel(item.status)}
+                      </span>
+                    </div>
+                    <span className="queue-secondary">
+                      {item.finalName ? item.originalName : item.suffix || "No suffix yet"}
+                    </span>
                   </div>
-                  <div className={`status-dot status-${item.status}`} />
                 </button>
               ))
             )}
@@ -448,128 +662,13 @@ export function App() {
         </section>
       </aside>
 
-      <main className="detail">
-        {selectedItem ? (
-          <section className="detail-surface">
-            <div className="preview-surface">
-              {previewUrls[selectedItem.id] ? (
-                <img
-                  src={previewUrls[selectedItem.id]}
-                  alt={selectedItem.finalName || selectedItem.originalName}
-                />
-              ) : (
-                <div className="empty-preview">Preview loading…</div>
-              )}
-            </div>
-
-            <div className="detail-panel">
-              <div className="section-title-row">
-                <div>
-                  <p className="eyebrow">Selected Item</p>
-                  <h2>{selectedItem.originalName}</h2>
-                </div>
-                <button
-                  className="secondary-button"
-                  onClick={() => void handleDeleteItem(selectedItem)}
-                >
-                  Delete
-                </button>
-              </div>
-
-              <label className="field">
-                <span>Suffix</span>
-                <input
-                  value={selectedItem.suffix}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    startTransition(() => {
-                      setQueue((current) =>
-                        current.map((item) =>
-                          item.id === selectedItem.id
-                            ? { ...item, suffix: nextValue }
-                            : item
-                        )
-                      );
-                    });
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key !== "Enter") {
-                      return;
-                    }
-                    if (selectedItem.status === "pending" || selectedItem.status === "error") {
-                      void handleFinalizeSelected();
-                    } else {
-                      void handleRenameReadyItem();
-                    }
-                  }}
-                  placeholder="e.g. q1_a"
-                />
-              </label>
-
-              <div className="meta-grid">
-                <div className="meta-card">
-                  <span>Final name</span>
-                  <strong>{selectedItem.finalName || "Not finalized yet"}</strong>
-                </div>
-                <div className="meta-card">
-                  <span>Status</span>
-                  <strong>{selectedItem.status}</strong>
-                </div>
-              </div>
-
-              {selectedItem.errorMessage ? (
-                <div className="error-banner">{selectedItem.errorMessage}</div>
-              ) : null}
-
-              <div className="button-row">
-                <button
-                  onClick={() => void handleFinalizeSelected()}
-                  disabled={!session.firstToken.trim()}
-                >
-                  Finalize
-                </button>
-                <button
-                  className="secondary-button"
-                  onClick={() => void handleRenameReadyItem()}
-                  disabled={selectedItem.status !== "ready"}
-                >
-                  Rename
-                </button>
-                <button
-                  className="secondary-button"
-                  onClick={() => void handleRetryItem(selectedItem)}
-                >
-                  Retry
-                </button>
-                <button
-                  className="secondary-button"
-                  onClick={() => void handleDownloadSelected()}
-                  disabled={selectedItem.status !== "ready"}
-                >
-                  Download Item
-                </button>
-              </div>
-            </div>
-          </section>
-        ) : (
-          <section className="detail-empty">
-            <p className="eyebrow">Workspace</p>
-            <h2>Choose or drop an image to start</h2>
-            <p>
-              The browser version keeps everything locally and exports finalized
-              `.webp` files as a ZIP into your browser downloads.
-            </p>
-          </section>
-        )}
-      </main>
-
       {isPresetModalOpen ? (
         <div className="modal-backdrop" onClick={() => setIsPresetModalOpen(false)}>
           <div className="modal" onClick={(event) => event.stopPropagation()}>
             <div className="section-title-row">
-              <h2>User Presets</h2>
+              <h2>Presets</h2>
               <button
-                className="secondary-button"
+                className="ghost-button"
                 onClick={() => setIsPresetModalOpen(false)}
               >
                 Done
@@ -589,7 +688,7 @@ export function App() {
                       {preset}
                     </button>
                     <button
-                      className="danger-button"
+                      className="ghost-button danger-button"
                       onClick={() => handleRemovePreset(preset)}
                     >
                       Delete
@@ -606,17 +705,33 @@ export function App() {
         <div className="toast" role="alert">
           <span>{errorMessage}</span>
           <button
-            className="secondary-button"
+            className="ghost-button"
             onClick={() => setErrorMessage(null)}
           >
             Dismiss
           </button>
         </div>
       ) : null}
+      </div>
     </div>
   );
 }
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
+}
+
+function formatStatusLabel(status: QueueItem["status"]) {
+  if (status === "ready") {
+    return "Ready";
+  }
+  if (status === "error") {
+    return "Error";
+  }
+  return "Pending";
+}
+
+function loadTheme(): ThemeMode {
+  const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+  return stored === "dark" ? "dark" : "light";
 }

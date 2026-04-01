@@ -1,74 +1,67 @@
-# Crop Renamer Monorepo
+# Crop Renaming Tool
 
-This monorepo contains multiple app tracks for the same workflow:
+Monorepo for three local-first variants of the same crop renaming workflow:
 
-- `apps/mac`: the current working macOS SwiftUI app
-- `apps/windows`: the new Windows-focused Tauri + React scaffold
-- `apps/web`: a browser-only version that keeps images in-browser and exports ZIP downloads
+- `apps/web`: browser-based React app
+- `apps/windows`: React + Tauri Windows app
+- `apps/mac`: SwiftUI macOS app
 
-## Goal
+## What the apps do
 
-All app variants implement the same naming workflow:
+Each variant is built around the same job:
 
-- drop cropped images
-- convert each image to `.webp`
-- apply a batch first token plus freeform suffix
-- keep finalized assets local to the app runtime
+- import cropped images
+- convert outputs to `.webp`
+- apply a shared first token plus per-file suffix
+- review a queue before export
 
-Platform-specific output:
+Platform differences:
 
-- macOS and Windows desktop variants save finalized files into a chosen destination folder
-- the web variant keeps finalized files in browser-local storage and exports them as ZIP downloads
+- web keeps files in browser storage and exports a zip
+- windows is intended to save through the desktop app flow
+- mac saves through the native app flow
 
-## Structure
+## Repository layout
 
 ```text
 apps/
   mac/
-    Package.swift
-    Sources/
-  windows/
-    package.json
-    src/
-    src-tauri/
   web/
-    package.json
-    src/
+  windows/
 docs/
-  architecture.md
-  windows-port-spec.md
 ```
 
-## Commands
+## Prerequisites
 
-### macOS app
+- Node.js 22+
+- `pnpm` 10+
+- macOS app: Xcode / Swift toolchain and `cwebp`
+- Windows desktop app: Rust + Tauri prerequisites on a Windows-capable environment
 
-```bash
-pnpm build:mac
-pnpm dev:mac
-```
-
-### Windows app scaffold
+## Root commands
 
 ```bash
-pnpm install:windows
-pnpm dev:windows:web
-pnpm build:windows:web
-```
-
-When building the real Windows desktop app, use:
-
-```bash
-pnpm dev:windows
-pnpm build:windows
-```
-
-That requires a Windows-capable Rust + Tauri setup.
-
-### Web app
-
-```bash
-pnpm install:web
 pnpm dev:web
 pnpm build:web
+
+pnpm dev:windows:web
+pnpm build:windows:web
+pnpm dev:windows
+pnpm build:windows
+
+pnpm dev:mac
+pnpm build:mac
 ```
+
+## App guides
+
+- [Web app](./apps/web/README.md)
+- [Windows app](./apps/windows/README.md)
+- [macOS app](./apps/mac/README.md)
+- [Docs index](./docs/README.md)
+
+## Current status
+
+- the web app is the most complete cross-platform implementation in this repo
+- the Windows app contains both the React UI and the Tauri backend scaffold
+- the macOS app is a local SwiftUI implementation of the same workflow

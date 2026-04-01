@@ -1,23 +1,43 @@
 # Crop Renamer Windows
 
-Windows-focused desktop scaffold for the crop renaming workflow.
+Windows desktop track for the crop renaming workflow.
 
 ## Stack
 
-- Tauri v2
 - React 19
 - TypeScript 6
 - Vite 8
-- Rust backend commands for file processing
+- Tauri 2
+- Rust backend in `src-tauri`
+
+## Working directories
+
+- `src/`: React frontend
+- `src-tauri/`: Rust + Tauri desktop backend
+- `resources/bin/windows/`: bundled Windows binaries such as `cwebp.exe`
 
 ## Install
 
+From the repo root:
+
 ```bash
-cd /Users/your-username/Documents/crop-renaming-tool/apps/windows
 pnpm install
 ```
 
-## Web UI only
+Or from this directory:
+
+```bash
+pnpm install
+```
+
+## Frontend only
+
+```bash
+pnpm dev:windows:web
+pnpm build:windows:web
+```
+
+From this directory:
 
 ```bash
 pnpm dev
@@ -27,14 +47,23 @@ pnpm build
 ## Desktop app
 
 ```bash
+pnpm dev:windows
+pnpm build:windows
+```
+
+From this directory:
+
+```bash
 pnpm tauri:dev
 pnpm tauri:build
 ```
 
+See [src-tauri/README.md](./src-tauri/README.md) for backend details.
+
 ## Binary dependency
 
-For the Rust backend to generate `.webp` files, ship `cwebp.exe` in:
+The Tauri backend expects `cwebp.exe` at:
 
 `resources/bin/windows/cwebp.exe`
 
-If that file is absent, the backend falls back to searching `PATH`.
+If that file is missing, the backend falls back to searching `PATH`.

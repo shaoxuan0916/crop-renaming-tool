@@ -1,38 +1,58 @@
-# Crop Renamer
+# Crop Renamer macOS
 
-A local macOS SwiftUI app for:
+Local SwiftUI app for the crop renaming workflow.
 
-- dropping cropped images
-- converting each image to `.webp`
-- applying a batch first token plus freeform suffix
-- moving the final file into a chosen destination folder
+## What it does
 
-## Run
+- imports cropped images locally
+- converts outputs to `.webp`
+- applies a batch first token plus per-image suffix
+- writes finalized files through the macOS app flow
 
-```bash
-cd /Users/your-username/Documents/crop-renaming-tool/apps/mac
-swift run
-```
+## Requirements
 
-## Dependency
+- macOS 14+
+- Swift 6.2 toolchain
+- `cwebp` installed and available on `PATH`
 
-The app uses `cwebp` for WebP conversion.
+Install `cwebp` with Homebrew:
 
 ```bash
 brew install webp
 ```
 
-## Workflow
+## Run
 
-1. Choose the destination folder.
-2. Enter the batch first token.
-3. Drop one or more cropped images into the drop zone.
-4. Select an item, type the suffix, then press `Enter` or click `Finalize`.
-5. Optionally edit a ready item's suffix and click `Rename`.
+From the repo root:
 
-## Notes
+```bash
+pnpm dev:mac
+```
 
-- Final outputs are always `.webp`.
-- The original dropped file is moved to a temporary backup before the final `.webp` file replaces it.
-- `Cmd+Z` undoes the last finalized rename and restores the original source file when possible.
-- Session state is logged to `crop-session-log.json` in the destination folder.
+Or from this directory:
+
+```bash
+swift run
+```
+
+## Build
+
+From the repo root:
+
+```bash
+pnpm build:mac
+```
+
+Or from this directory:
+
+```bash
+swift build
+```
+
+## Source layout
+
+- `Sources/Playground/PlaygroundApp.swift`: app entry
+- `Sources/Playground/ContentView.swift`: UI
+- `Sources/Playground/AppViewModel.swift`: view model
+- `Sources/Playground/FileWorkflowService.swift`: file workflow logic
+- `Sources/Playground/Models.swift`: shared models
