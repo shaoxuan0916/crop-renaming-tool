@@ -1,0 +1,15 @@
+.DS_Store
+node_modules/
+dist/
+target/
+.turbo/
+.pnpm-store/
+apps/mac/.build/
+apps/mac/Packages/
+apps/mac/xcuserdata/
+apps/mac/DerivedData/
+apps/mac/.swiftpm/configuration/registries.json
+apps/mac/.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+apps/windows/src-tauri/target/
+apps/windows/dist/
+.netrc

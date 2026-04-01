@@ -1,0 +1,14 @@
+{
+  "name": "crop-renamer-monorepo",
+  "private": true,
+  "packageManager": "pnpm@10.14.0",
+  "scripts": {
+    "build:mac": "cd apps/mac && swift build",
+    "dev:mac": "cd apps/mac && swift run",
+    "install:windows": "pnpm --dir apps/windows install",
+    "dev:windows:web": "pnpm --dir apps/windows dev",
+    "build:windows:web": "pnpm --dir apps/windows build",
+    "dev:windows": "pnpm --dir apps/windows tauri:dev",
+    "build:windows": "pnpm --dir apps/windows tauri:build"
+  }
+}
