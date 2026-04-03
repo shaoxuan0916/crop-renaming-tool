@@ -379,7 +379,7 @@ export function App() {
               <div className="button-row">
                 <button
                   onClick={() => void finalizeSelected()}
-                  disabled={selectedItem.status !== "pending" || !session.firstToken.trim()}
+                  disabled={selectedItem.status === "ready"}
                 >
                   Finalize
                 </button>

@@ -60,12 +60,13 @@ export function finalizeItem(
   queue: QueueItem[]
 ): QueueItem {
   const firstToken = sanitizeFilenameSegment(session.firstToken);
-  if (!firstToken) {
-    throw new Error("Set the batch first token before finalizing files.");
+  const suffix = sanitizeFilenameSegment(item.suffix);
+  const baseFilename = buildBaseFilename(firstToken, suffix);
+  if (!baseFilename) {
+    throw new Error("Enter a suffix or first token before finalizing files.");
   }
 
-  const suffix = sanitizeFilenameSegment(item.suffix);
-  const finalName = `${buildBaseFilename(firstToken, suffix)}.webp`;
+  const finalName = `${baseFilename}.webp`;
 
   const collision = queue.some(
     (entry) => entry.id !== item.id && entry.finalName.toLowerCase() === finalName.toLowerCase()

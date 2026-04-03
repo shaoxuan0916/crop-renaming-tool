@@ -582,7 +582,7 @@ export function App() {
                 <div className="button-row">
                   <button
                     onClick={() => void handleFinalizeSelected()}
-                    disabled={!session.firstToken.trim()}
+                    disabled={selectedItem.status === "ready"}
                   >
                     Finalize
                   </button>

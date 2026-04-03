@@ -22,7 +22,7 @@ final class AppViewModel: ObservableObject {
 
     var canFinalizeSelected: Bool {
         guard let selectedItem else { return false }
-        return selectedItem.status == .pending && !session.firstToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return selectedItem.status == .pending
     }
 
     var canUndo: Bool {

@@ -11,7 +11,7 @@ pub enum WorkflowError {
     ConversionFailed(String),
     ConverterMissing,
     MissingPreparedImage,
-    MissingFirstToken,
+    MissingFilenameTokens,
     MissingFinalPath,
     FilenameCollision(String),
     Io(std::io::Error),
@@ -29,7 +29,9 @@ impl Display for WorkflowError {
                 write!(f, "WebP conversion requires cwebp.exe in resources/bin/windows or PATH.")
             }
             WorkflowError::MissingPreparedImage => write!(f, "This item is missing its prepared WebP file."),
-            WorkflowError::MissingFirstToken => write!(f, "Set the batch first token before finalizing files."),
+            WorkflowError::MissingFilenameTokens => {
+                write!(f, "Enter a suffix or first token before finalizing files.")
+            }
             WorkflowError::MissingFinalPath => write!(f, "The final file path is missing for this item."),
             WorkflowError::FilenameCollision(path) => {
                 write!(f, "A file already exists at {path}.")

@@ -157,16 +157,15 @@ fn finalize_item(item: QueueItem, session: BatchSession) -> Result<FinalizeQueue
         return Err(WorkflowError::FileNotFound);
     }
 
-    let first_token = sanitize_filename_segment(&session.first_token);
-    if first_token.is_empty() {
-        return Err(WorkflowError::MissingFirstToken);
-    }
-
     let destination_folder = PathBuf::from(&session.destination_folder);
     ensure_directory(&destination_folder)?;
 
+    let first_token = sanitize_filename_segment(&session.first_token);
     let suffix = sanitize_filename_segment(&item.suffix);
     let final_name = build_final_filename(&first_token, &suffix);
+    if final_name.is_empty() {
+        return Err(WorkflowError::MissingFilenameTokens);
+    }
     let final_path = destination_folder.join(format!("{final_name}.webp"));
     if final_path.exists() {
         return Err(WorkflowError::FilenameCollision(final_path.display().to_string()));
@@ -224,12 +223,11 @@ fn rename_item(item: QueueItem, session: BatchSession) -> Result<QueueItem, Work
         .ok_or(WorkflowError::MissingFinalPath)?;
 
     let first_token = sanitize_filename_segment(&session.first_token);
-    if first_token.is_empty() {
-        return Err(WorkflowError::MissingFirstToken);
-    }
-
     let suffix = sanitize_filename_segment(&item.suffix);
     let new_name = build_final_filename(&first_token, &suffix);
+    if new_name.is_empty() {
+        return Err(WorkflowError::MissingFilenameTokens);
+    }
     let new_final = current_final.with_file_name(format!("{new_name}.webp"));
 
     if current_final != new_final && new_final.exists() {

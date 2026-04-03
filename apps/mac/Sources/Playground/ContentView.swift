@@ -142,7 +142,7 @@ struct ContentView: View {
                         Button("Finalize") {
                             viewModel.finalizeSelectedItem()
                         }
-                        .disabled(item.status != .pending || viewModel.session.firstToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(item.status == .ready)
 
                         Button("Rename") {
                             viewModel.renameReadyItem(item.id)

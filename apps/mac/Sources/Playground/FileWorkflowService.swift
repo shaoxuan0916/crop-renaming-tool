@@ -52,12 +52,11 @@ struct FileWorkflowService {
         }
 
         let firstToken = sanitizeFilenameSegment(session.firstToken)
-        guard !firstToken.isEmpty else {
-            throw WorkflowError.missingFirstToken
-        }
-
         let sanitizedSuffix = sanitizeFilenameSegment(item.suffix)
         let finalName = buildFinalFilename(firstToken: firstToken, suffix: sanitizedSuffix)
+        guard !finalName.isEmpty else {
+            throw WorkflowError.missingFilenameTokens
+        }
         let finalURL = destinationFolderURL.appendingPathComponent(finalName).appendingPathExtension("webp")
 
         if fileManager.fileExists(atPath: finalURL.path) {
@@ -103,12 +102,11 @@ struct FileWorkflowService {
         }
 
         let firstToken = sanitizeFilenameSegment(session.firstToken)
-        guard !firstToken.isEmpty else {
-            throw WorkflowError.missingFirstToken
-        }
-
         let sanitizedSuffix = sanitizeFilenameSegment(item.suffix)
         let newName = buildFinalFilename(firstToken: firstToken, suffix: sanitizedSuffix)
+        guard !newName.isEmpty else {
+            throw WorkflowError.missingFilenameTokens
+        }
         let currentURL = URL(fileURLWithPath: finalPath)
         let newURL = currentURL.deletingLastPathComponent().appendingPathComponent(newName).appendingPathExtension("webp")
 
@@ -274,7 +272,7 @@ enum WorkflowError: LocalizedError {
     case conversionFailed(String)
     case converterMissing
     case missingPreparedImage
-    case missingFirstToken
+    case missingFilenameTokens
     case missingFinalPath
     case filenameCollision(String)
 
@@ -290,8 +288,8 @@ enum WorkflowError: LocalizedError {
             return "WebP conversion requires cwebp. Install it with `brew install webp`."
         case .missingPreparedImage:
             return "This item is missing its prepared WebP file."
-        case .missingFirstToken:
-            return "Set the batch first token before finalizing files."
+        case .missingFilenameTokens:
+            return "Enter a suffix or first token before finalizing files."
         case .missingFinalPath:
             return "The final file path is missing for this item."
         case let .filenameCollision(name):
