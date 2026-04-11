@@ -7,14 +7,23 @@ export async function fileToQueueItem(file: File, quality: number): Promise<Queu
     throw new Error(`${file.name} is not a supported image.`);
   }
 
+  return blobToQueueItem(file, file.name, file.type, quality);
+}
+
+export async function blobToQueueItem(
+  blob: Blob,
+  originalName: string,
+  originalType: string,
+  quality: number
+): Promise<QueueItem> {
   const id = crypto.randomUUID();
   const originalBlobKey = `original:${id}`;
   const webpBlobKey = `webp:${id}`;
 
-  await putBlob(originalBlobKey, file);
+  await putBlob(originalBlobKey, blob);
 
   try {
-    const webpBlob = await convertBlobToWebp(file, quality);
+    const webpBlob = await convertBlobToWebp(blob, quality);
     await putBlob(webpBlobKey, webpBlob);
   } catch (error) {
     await Promise.allSettled([
@@ -26,8 +35,8 @@ export async function fileToQueueItem(file: File, quality: number): Promise<Queu
 
   return {
     id,
-    originalName: file.name,
-    originalType: file.type,
+    originalName,
+    originalType,
     suffix: "",
     finalName: "",
     status: "pending",
