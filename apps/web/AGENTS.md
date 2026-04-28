@@ -33,4 +33,4 @@
 
 ## UI Notes
 - Preserve the current single-page layout and light visual direction unless a redesign is requested.
-- Keep desktop and narrow-screen behavior coherent; the layout already collapses below `1080px`.
+- Keep wide and narrow-screen behavior coherent; the layout already collapses below `1080px`.

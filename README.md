@@ -1,33 +1,23 @@
 # Crop Renaming Tool
 
-Monorepo for three local-first variants of the same crop renaming workflow:
+Browser-local crop renaming workflow built with React, TypeScript, and Vite.
 
-- `apps/web`: browser-based React app
-- `apps/windows`: React + Tauri Windows app
-- `apps/mac`: SwiftUI macOS app
+## What the app does
 
-## What the apps do
-
-Each variant is built around the same job:
+The app is built around one local-first job:
 
 - import cropped images
 - convert outputs to `.webp`
 - apply a shared first token plus per-file suffix
 - review a queue before export
-
-Platform differences:
-
-- web keeps files in browser storage and exports a zip
-- windows is intended to save through the desktop app flow
-- mac saves through the native app flow
+- keep files in browser storage
+- export ready items as a zip download
 
 ## Repository layout
 
 ```text
 apps/
-  mac/
   web/
-  windows/
 docs/
 ```
 
@@ -35,33 +25,23 @@ docs/
 
 - Node.js 22+
 - `pnpm` 10+
-- macOS app: Xcode / Swift toolchain and `cwebp`
-- Windows desktop app: Rust + Tauri prerequisites on a Windows-capable environment
 
 ## Root commands
 
 ```bash
+pnpm install
 pnpm dev:web
 pnpm build:web
-
-pnpm dev:windows:web
-pnpm build:windows:web
-pnpm dev:windows
-pnpm build:windows
-
-pnpm dev:mac
-pnpm build:mac
 ```
 
 ## App guides
 
 - [Web app](./apps/web/README.md)
-- [Windows app](./apps/windows/README.md)
-- [macOS app](./apps/mac/README.md)
 - [Docs index](./docs/README.md)
 
 ## Current status
 
-- the web app is the most complete cross-platform implementation in this repo
-- the Windows app contains both the React UI and the Tauri backend scaffold
-- the macOS app is a local SwiftUI implementation of the same workflow
+- the browser app is the only active app target in this repository
+- queue metadata is stored in `localStorage`
+- image blobs are stored in IndexedDB
+- finalized assets are downloaded from the browser as individual files or zip archives
