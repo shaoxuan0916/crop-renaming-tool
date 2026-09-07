@@ -36,7 +36,7 @@ import {
 } from "./lib/storage";
 import type { BatchSession, QueueItem } from "./lib/types";
 
-const EMPTY_HINT = "No files yet. Drop images here or use Pick Files.";
+const EMPTY_HINT = "Your imported files will appear here.";
 const THEME_STORAGE_KEY = "crop-renamer-web:theme";
 const MISSING_ASSET_MESSAGE =
   "Stored image data is missing from browser storage. Re-import this file to continue.";
@@ -244,7 +244,7 @@ export function App() {
           canvasContext: renderContext,
           viewport,
           transform: outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : undefined,
-          background: "white"
+          background: "#fdfcf9"
         });
         renderTaskRef.current = renderTask;
         await renderTask.promise;
@@ -680,12 +680,16 @@ export function App() {
         </div>
       ) : null}
       <div className="shell">
-      <aside className="sidebar">
-        <section className="hero">
-          <div className="hero-header">
+        <header className="app-header">
+          <div className="brand">
+            <div className="brand-mark" aria-hidden="true">CR</div>
             <div>
               <h1>Crop Renamer</h1>
+              <p>Crop, rename, and export — privately in your browser.</p>
             </div>
+          </div>
+          <div className="header-actions">
+            <span className="privacy-label"><span aria-hidden="true">●</span> Browser only</span>
             <div className="theme-switch" aria-label="Theme">
               <button
                 type="button"
@@ -703,18 +707,20 @@ export function App() {
               </button>
             </div>
           </div>
+        </header>
 
-          <p className="lede">Crop PDFs, rename images, export WebP.</p>
-        </section>
-
+        <aside className="sidebar">
         <section className="panel control-panel">
           <div className="section-title-row tight">
-            <h2>Batch</h2>
+            <div>
+              <p className="eyebrow">Step 1</p>
+              <h2>Set up batch</h2>
+            </div>
             <button
-              className="ghost-button"
+              className="text-button danger-button"
               onClick={() => void handleResetSession()}
             >
-              Reset Session
+              Reset
             </button>
           </div>
 
@@ -744,19 +750,13 @@ export function App() {
           </label>
 
           <div className="button-row compact-grid">
-            <button onClick={handleSavePreset}>Save Preset</button>
+            <button className="ghost-button" onClick={handleSavePreset}>Save preset</button>
             <button
               className="ghost-button"
               onClick={() => setIsPresetModalOpen(true)}
               disabled={presets.length === 0}
             >
               Presets
-            </button>
-            <button
-              className="ghost-button"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              Import
             </button>
           </div>
 
@@ -786,20 +786,61 @@ export function App() {
             }}
           >
             <div className="drop-badge">{isImporting ? "..." : "+"}</div>
-            <strong>{isImporting ? "Importing..." : "Drop PDF or images"}</strong>
-            <p>Everything stays in this browser.</p>
+            <strong>{isImporting ? "Importing..." : "Drop files here"}</strong>
+            <p>PDF or images</p>
           </div>
 
           <div className="button-row compact">
             <button
+              className="download-button"
               onClick={() => void handleDownloadAll()}
               disabled={isDownloading || readyCount === 0}
             >
-              {isDownloading ? "Preparing Zip..." : "Download Zip"}
+              {isDownloading ? "Preparing zip..." : `Download zip${readyCount ? ` · ${readyCount}` : ""}`}
             </button>
           </div>
         </section>
-      </aside>
+
+        <section className="panel queue-panel">
+          <div className="section-title-row tight">
+            <div>
+              <p className="eyebrow">Step 2</p>
+              <h2>Queue</h2>
+            </div>
+            <span className="count-badge">{queue.length}</span>
+          </div>
+
+          <div className="queue-list">
+            {deferredQueue.length === 0 ? (
+              <div className="empty-state">{EMPTY_HINT}</div>
+            ) : (
+              deferredQueue.map((item, index) => (
+                <button
+                  key={item.id}
+                  className={`queue-item ${item.id === selectedItemId ? "is-selected" : ""}`}
+                  onClick={() => {
+                    setSelectedItemId(item.id);
+                    setIsPdfWorkspaceVisible(false);
+                  }}
+                >
+                  <div className="queue-index">{index + 1}</div>
+                  <div className="queue-copy">
+                    <div className="queue-row">
+                      <strong>{item.finalName || item.originalName}</strong>
+                      <span className={`status-pill status-pill-${item.status}`}>
+                        {formatStatusLabel(item.status)}
+                      </span>
+                    </div>
+                    <span className="queue-secondary">
+                      {item.finalName ? item.originalName : item.suffix || "No suffix yet"}
+                    </span>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </section>
+        </aside>
 
       <main className="detail-column">
         {pdfDocument && isPdfWorkspaceVisible ? (
@@ -1012,59 +1053,20 @@ export function App() {
             </section>
           </>
         ) : (
-          <>
-            <section className="preview-surface preview-empty">
-              <div className="empty-preview">Select a file to preview it here.</div>
-            </section>
-            <section className="detail-empty">
-              <div className="section-title-row">
-                <p className="eyebrow">Settings</p>
-              </div>
-              <h2>Select a file</h2>
-              <p>Choose an item from the queue or import new images.</p>
-            </section>
-          </>
+          <section className="workspace-empty">
+            <div className="empty-illustration" aria-hidden="true">
+              <span>+</span>
+            </div>
+            <p className="eyebrow">Ready when you are</p>
+            <h2>Start with a PDF or image</h2>
+            <p className="workspace-empty-copy">
+              Drop files anywhere, or choose them from your device. Nothing is uploaded.
+            </p>
+            <button onClick={() => fileInputRef.current?.click()}>Choose files</button>
+            <p className="file-support">PDF, PNG, JPG, HEIC, and other browser-supported images</p>
+          </section>
         )}
       </main>
-
-      <aside className="queue-column">
-        <section className="panel queue-panel">
-          <div className="section-title-row tight">
-            <h2>Queue</h2>
-            <span className="section-caption">{queue.length} items</span>
-          </div>
-
-          <div className="queue-list">
-            {deferredQueue.length === 0 ? (
-              <div className="empty-state">{EMPTY_HINT}</div>
-            ) : (
-              deferredQueue.map((item, index) => (
-                <button
-                  key={item.id}
-                  className={`queue-item ${item.id === selectedItemId ? "is-selected" : ""}`}
-                  onClick={() => {
-                    setSelectedItemId(item.id);
-                    setIsPdfWorkspaceVisible(false);
-                  }}
-                >
-                  <div className="queue-index">{index + 1}</div>
-                  <div className="queue-copy">
-                    <div className="queue-row">
-                      <strong>{item.finalName || item.originalName}</strong>
-                      <span className={`status-pill status-pill-${item.status}`}>
-                        {formatStatusLabel(item.status)}
-                      </span>
-                    </div>
-                    <span className="queue-secondary">
-                      {item.finalName ? item.originalName : item.suffix || "No suffix yet"}
-                    </span>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
-        </section>
-      </aside>
 
       {isPresetModalOpen ? (
         <div className="modal-backdrop" onClick={() => setIsPresetModalOpen(false)}>

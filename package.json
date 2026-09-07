@@ -6,5 +6,8 @@
     "install:web": "pnpm --dir apps/web install",
     "dev:web": "pnpm --dir apps/web dev",
     "build:web": "pnpm --dir apps/web build"
-  }
+  },
+  "workspaces": [
+    "apps/web"
+  ]
 }
